@@ -77,15 +77,6 @@ Add `.md` files to the `/brain` folder and re-run `npm run index`. The bot will 
 - Monsoon maintenance and waterlogging
 - Mechanic scams and how to avoid them
 
-## Deployment on Render
-
-1. Push to GitHub
-2. Create a new **Background Worker** on [render.com](https://render.com)
-3. Connect your repo, set **Build Command** to `npm install` and **Start Command** to `npm start`
-4. Add the five environment variables in the Render dashboard
-
-The `render.yaml` in this repo pre-configures the service type and env var names.
-
 ## Project Structure
 
 ```
