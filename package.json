@@ -8,11 +8,10 @@
     "index": "node index-brain.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
+    "@anthropic-ai/sdk": "^0.102.0",
     "@supabase/supabase-js": "^2.49.0",
     "dotenv": "^16.4.0",
-    "node-telegram-bot-api": "^0.66.0",
-    "voyageai": "^0.3.1"
+    "node-telegram-bot-api": "^0.66.0"
   },
   "engines": {
     "node": ">=18.0.0"
