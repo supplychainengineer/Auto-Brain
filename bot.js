@@ -1,29 +1,26 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const Anthropic = require('@anthropic-ai/sdk');
-const { pipeline } = require('@xenova/transformers');
+const { CohereClient } = require('cohere-ai');
 const { createClient } = require('@supabase/supabase-js');
 
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const cohere = new CohereClient({ token: process.env.COHERE_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-
-let embedder = null;
-async function getEmbedder() {
-  if (!embedder) {
-    embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-  }
-  return embedder;
-}
 
 const SYSTEM_PROMPT = `You are AutoBrain, an expert diagnostic agent for Indian two-wheelers. Use the provided knowledge base to diagnose issues. Give: ranked causes, INR cost, urgency, 3 questions to ask mechanic, red flags for scams. Be specific to Indian context — BS6, monsoon, dusty roads.`;
 
 const TOP_K = 3;
 
 async function embedQuery(text) {
-  const embed = await getEmbedder();
-  const output = await embed(text, { pooling: 'mean', normalize: true });
-  return Array.from(output.data);
+  const response = await cohere.embed({
+    model: 'embed-english-v3.0',
+    texts: [text],
+    inputType: 'search_query',
+    embeddingTypes: ['float'],
+  });
+  return response.embeddings.float[0];
 }
 
 async function searchDocuments(embedding) {
@@ -31,20 +28,17 @@ async function searchDocuments(embedding) {
     query_embedding: embedding,
     match_count: TOP_K,
   });
-
   if (error) throw new Error(`Supabase search failed: ${error.message}`);
   return data || [];
 }
 
 async function askClaude(userQuery, chunks) {
   const context = chunks.map((c, i) => `[${i + 1}] ${c.content}`).join('\n\n');
-
   const userMessage = `Knowledge base:\n${context}\n\nUser question: ${userQuery}`;
 
   const stream = await anthropic.messages.stream({
-    model: 'claude-opus-4-8',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
-    thinking: { type: 'adaptive' },
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userMessage }],
   });
@@ -86,11 +80,9 @@ bot.on('message', async (msg) => {
     const answer = await askClaude(text, chunks);
     clearInterval(typingInterval);
 
-    // Telegram max message length is 4096
     if (answer.length <= 4096) {
       await bot.sendMessage(chatId, answer, { parse_mode: 'Markdown' });
     } else {
-      // Split long responses
       const parts = answer.match(/[\s\S]{1,4000}/g) || [answer];
       for (const part of parts) {
         await bot.sendMessage(chatId, part, { parse_mode: 'Markdown' });

@@ -1,26 +1,15 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
-const { pipeline } = require('@xenova/transformers');
+const { CohereClient } = require('cohere-ai');
 const { createClient } = require('@supabase/supabase-js');
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const cohere = new CohereClient({ token: process.env.COHERE_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const BRAIN_DIR = path.join(__dirname, 'brain');
 const CHUNK_SIZE = 800;
 const CHUNK_OVERLAP = 100;
-
-let embedder = null;
-async function getEmbedder() {
-  if (!embedder) {
-    console.log('Loading embedding model (first run downloads ~25MB)...');
-    embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-    console.log('Model loaded.');
-  }
-  return embedder;
-}
 
 function chunkText(text) {
   const chunks = [];
@@ -34,9 +23,13 @@ function chunkText(text) {
 }
 
 async function embedText(text) {
-  const embed = await getEmbedder();
-  const output = await embed(text, { pooling: 'mean', normalize: true });
-  return Array.from(output.data);
+  const response = await cohere.embed({
+    model: 'embed-english-v3.0',
+    texts: [text],
+    inputType: 'search_document',
+    embeddingTypes: ['float'],
+  });
+  return response.embeddings.float[0];
 }
 
 async function indexBrain() {
@@ -54,9 +47,6 @@ async function indexBrain() {
   }
 
   console.log(`Found ${files.length} files: ${files.join(', ')}`);
-
-  // Warm up model before DB operations
-  await getEmbedder();
 
   // Clear existing documents
   const { error: deleteError } = await supabase.from('documents').delete().gt('id', 0);
@@ -88,6 +78,8 @@ async function indexBrain() {
         process.stdout.write(' done\n');
         totalChunks++;
       }
+
+      await new Promise(r => setTimeout(r, 500));
     }
   }
 
