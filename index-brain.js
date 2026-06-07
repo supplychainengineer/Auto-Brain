@@ -2,16 +2,25 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
-const OpenAI = require('openai');
+const { pipeline } = require('@xenova/transformers');
 const { createClient } = require('@supabase/supabase-js');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const BRAIN_DIR = path.join(__dirname, 'brain');
 const CHUNK_SIZE = 800;
 const CHUNK_OVERLAP = 100;
+
+let embedder = null;
+async function getEmbedder() {
+  if (!embedder) {
+    console.log('Loading embedding model (first run downloads ~25MB)...');
+    embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    console.log('Model loaded.');
+  }
+  return embedder;
+}
 
 function chunkText(text) {
   const chunks = [];
@@ -25,11 +34,9 @@ function chunkText(text) {
 }
 
 async function embedText(text) {
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: text,
-  });
-  return response.data[0].embedding;
+  const embed = await getEmbedder();
+  const output = await embed(text, { pooling: 'mean', normalize: true });
+  return Array.from(output.data);
 }
 
 async function indexBrain() {
@@ -47,6 +54,9 @@ async function indexBrain() {
   }
 
   console.log(`Found ${files.length} files: ${files.join(', ')}`);
+
+  // Warm up model before DB operations
+  await getEmbedder();
 
   // Clear existing documents
   const { error: deleteError } = await supabase.from('documents').delete().gt('id', 0);
@@ -78,9 +88,6 @@ async function indexBrain() {
         process.stdout.write(' done\n');
         totalChunks++;
       }
-
-      // 1 second delay to avoid rate limits
-      await new Promise(r => setTimeout(r, 1000));
     }
   }
 

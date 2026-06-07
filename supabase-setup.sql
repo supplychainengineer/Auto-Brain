@@ -5,7 +5,7 @@ create extension if not exists vector;
 create table if not exists documents (
   id bigserial primary key,
   content text not null,
-  embedding vector(1536)
+  embedding vector(384)
 );
 
 -- Index for fast similarity search
@@ -15,7 +15,7 @@ create index if not exists documents_embedding_idx
 
 -- Similarity search function
 create or replace function match_documents(
-  query_embedding vector(1536),
+  query_embedding vector(384),
   match_count int default 3
 )
 returns table (
