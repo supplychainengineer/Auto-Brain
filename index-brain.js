@@ -1,8 +1,10 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const BRAIN_DIR = path.join(__dirname, 'brain');
@@ -21,23 +23,10 @@ function chunkText(text) {
 }
 
 async function embedText(text) {
-  const res = await fetch('https://api.anthropic.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ model: 'voyage-3', input: [text] }),
+  const response = await anthropic.post('/v1/embeddings', {
+    body: { model: 'voyage-3', input: [text] },
   });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Embeddings API error ${res.status}: ${body}`);
-  }
-
-  const json = await res.json();
-  return json.data[0].embedding;
+  return response.data[0].embedding;
 }
 
 async function indexBrain() {

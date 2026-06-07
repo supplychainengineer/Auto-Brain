@@ -12,23 +12,10 @@ const SYSTEM_PROMPT = `You are AutoBrain, an expert diagnostic agent for Indian 
 const TOP_K = 3;
 
 async function embedQuery(text) {
-  const res = await fetch('https://api.anthropic.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ model: 'voyage-3', input: [text] }),
+  const response = await anthropic.post('/v1/embeddings', {
+    body: { model: 'voyage-3', input: [text] },
   });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Embeddings API error ${res.status}: ${body}`);
-  }
-
-  const json = await res.json();
-  return json.data[0].embedding;
+  return response.data[0].embedding;
 }
 
 async function searchDocuments(embedding) {
