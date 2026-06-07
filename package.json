@@ -1,0 +1,19 @@
+{
+  "name": "auto-brain",
+  "version": "1.0.0",
+  "description": "Telegram bot for Indian two-wheeler diagnostics using RAG",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "index": "node index-brain.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "dotenv": "^16.4.0",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
