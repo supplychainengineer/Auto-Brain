@@ -1,10 +1,12 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const SYSTEM_PROMPT = `You are AutoBrain, an expert diagnostic agent for Indian two-wheelers. Use the provided knowledge base to diagnose issues. Give: ranked causes, INR cost, urgency, 3 questions to ask mechanic, red flags for scams. Be specific to Indian context — BS6, monsoon, dusty roads.`;
@@ -12,8 +14,9 @@ const SYSTEM_PROMPT = `You are AutoBrain, an expert diagnostic agent for Indian 
 const TOP_K = 3;
 
 async function embedQuery(text) {
-  const response = await anthropic.post('/v1/embeddings', {
-    body: { model: 'voyage-3', input: [text] },
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: text,
   });
   return response.data[0].embedding;
 }

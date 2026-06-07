@@ -2,9 +2,11 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const BRAIN_DIR = path.join(__dirname, 'brain');
@@ -23,8 +25,9 @@ function chunkText(text) {
 }
 
 async function embedText(text) {
-  const response = await anthropic.post('/v1/embeddings', {
-    body: { model: 'voyage-3', input: [text] },
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: text,
   });
   return response.data[0].embedding;
 }
